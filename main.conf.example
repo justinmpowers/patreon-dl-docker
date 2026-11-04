@@ -1,0 +1,46 @@
+# patreon-dl configuration. Copy to main.conf, then set target.url and cookie.
+#
+# This is a minimal starting point. Every option is documented in upstream's
+# example config:
+#   https://github.com/patrickkfkan/patreon-dl/blob/master/example.conf
+#
+# Note: the output directory is always /data inside the container (./data on
+# your machine), so out.dir is ignored.
+
+[downloader]
+# Creator page(s) to download. Separate multiple URLs with commas:
+#   target.url = https://www.patreon.com/creator1/posts,https://www.patreon.com/creator2/posts
+target.url = https://www.patreon.com/CREATOR/posts
+
+# Your Patreon session cookie. Required for patron-only content.
+# How to get it: https://github.com/patrickkfkan/patreon-dl/wiki/How-to-obtain-Cookie
+# Treat it like a password — anyone with it can access your Patreon account.
+cookie =
+
+# Remember what was already downloaded, so scheduled runs only fetch new posts.
+use.status.cache = 1
+
+# Go through every post on each run. Set to "previouslyDownloaded" to stop at
+# the first post that was already downloaded (faster for large creators).
+stop.on = never
+
+[include]
+# By default everything you have access to is downloaded: images, video,
+# audio, attachments and previews.
+#
+# --- Recipe: ZIP attachments only (e.g. 3D-printing model packs) ---
+# A leading "!" makes the filename match case-insensitive (.zip and .ZIP).
+# content.media = attachment
+# preview.media = 0
+# attachments.by.filename = !*.zip
+
+# Only posts published on/after (inclusive) or before (exclusive) a date,
+# format yyyy-MM-dd:
+# posts.published.after = 2025-01-01
+# posts.published.before =
+
+[request]
+# Be gentle with Patreon's servers.
+max.retries = 3
+max.concurrent = 10
+min.time = 333

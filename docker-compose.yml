@@ -1,0 +1,43 @@
+# `docker compose pull && docker compose up -d` runs the prebuilt image;
+# `docker compose up -d --build` builds it from this checkout instead.
+# Settings come from .env (see .env.example).
+
+x-patreon-dl: &patreon-dl
+  image: ${IMAGE:-ghcr.io/justinmpowers/patreon-dl-docker:latest}
+  build: .
+  restart: unless-stopped
+
+services:
+  patreon-dl-download:
+    <<: *patreon-dl
+    container_name: patreon-dl-download
+    environment:
+      MODE: download-cron
+      CRON_SCHEDULE: ${CRON_SCHEDULE:-0 12 * * *}
+      RUN_ON_START: ${RUN_ON_START:-1}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      TZ: ${TZ:-UTC}
+    volumes:
+      - type: bind
+        source: ./main.conf
+        target: /config/main.conf
+        read_only: true
+        bind:
+          # Fail clearly if main.conf is missing instead of creating an empty
+          # directory in its place.
+          create_host_path: false
+      - ./data:/data
+
+  patreon-dl-server:
+    <<: *patreon-dl
+    container_name: patreon-dl-server
+    environment:
+      MODE: server
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      TZ: ${TZ:-UTC}
+    volumes:
+      - ./data:/data
+    ports:
+      # The web UI has no login, so it only listens on localhost unless
+      # SERVER_BIND is changed in .env.
+      - "${SERVER_BIND:-127.0.0.1}:${SERVER_PORT:-3900}:3000"

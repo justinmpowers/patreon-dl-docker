@@ -1,0 +1,102 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  # Weekly rebuild so the published image picks up Debian security updates.
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: ShellCheck
+        run: shellcheck docker-entrypoint.sh run-download-batch.sh
+
+      - name: Hadolint
+        uses: hadolint/hadolint-action@v3.5.0
+        with:
+          dockerfile: Dockerfile
+
+      - name: Validate compose file
+        run: |
+          cp .env.example .env
+          cp main.conf.example main.conf
+          docker compose config --quiet
+
+  image:
+    needs: lint
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: docker/setup-qemu-action@v4
+
+      - uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=semver,pattern=v{{version}}
+            type=semver,pattern=v{{major}}.{{minor}}
+
+      - name: Build and smoke-test (amd64)
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          load: true
+          tags: patreon-dl-docker:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Smoke test
+        run: |
+          docker run --rm patreon-dl-docker:ci patreon-dl --help > /dev/null
+          docker run --rm patreon-dl-docker:ci deno --version
+          docker run --rm patreon-dl-docker:ci supercronic -version
+          # Downloader must refuse to start without a config.
+          if docker run --rm -e MODE=download patreon-dl-docker:ci; then
+            echo "expected failure without config" >&2; exit 1
+          fi
+          # With no downloads yet, the web UI must wait for the database
+          # instead of crash-looping.
+          docker run -d --name ui patreon-dl-docker:ci
+          sleep 5
+          docker logs ui 2>&1 | grep -q "Waiting for the first download" || { docker logs ui; exit 1; }
+          [ "$(docker inspect -f '{{.State.Running}}' ui)" = true ] || { docker logs ui; exit 1; }
+          docker rm -f ui
+
+      - name: Build and push (amd64 + arm64)
+        if: github.event_name != 'pull_request'
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

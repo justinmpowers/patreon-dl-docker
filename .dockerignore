@@ -1,0 +1,5 @@
+# Allowlist: send only the files the image COPYs into the build context, so
+# main.conf (your cookie), .env and downloaded content never leave your machine.
+*
+!docker-entrypoint.sh
+!run-download-batch.sh

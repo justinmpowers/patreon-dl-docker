@@ -1,0 +1,25 @@
+# Secrets / local config — never commit these
+.env
+main.conf
+
+# Downloaded content, logs and the status-cache DB (mounted into the containers
+# as /data). The folder itself is kept so a fresh clone has it owned by you
+# rather than letting Docker create it as root.
+/data/*
+!/data/.gitkeep
+
+# Output from running patreon-dl directly on the host instead of in Docker.
+# patreon-dl names campaign folders "<creator> - <campaign>", so any top-level
+# directory with " - " in its name is treated as downloaded content.
+/* - */
+.patreon-dl/
+logs/
+*.sqlite
+*.sqlite.bak-*
+*.log
+
+# OS/editor noise
+.DS_Store
+.vscode/
+.idea/
+.claude/settings.local.json

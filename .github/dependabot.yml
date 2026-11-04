@@ -1,0 +1,12 @@
+version: 2
+updates:
+  # Base images in the Dockerfile (node, deno, curl).
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
