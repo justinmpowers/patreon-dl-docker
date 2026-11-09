@@ -23,7 +23,7 @@ RUN curl -fsSLO "https://github.com/aptible/supercronic/releases/download/v${SUP
  && mv "supercronic-linux-${TARGETARCH}" supercronic
 
 # ---- Final image ----
-FROM node:22-bookworm-slim
+FROM node:26-bookworm-slim
 
 # Debian stable only receives security fixes, so packages are intentionally left
 # unpinned: exact version pins disappear from the mirrors after each point
